@@ -164,7 +164,9 @@ int main()
 {
     sf::RenderWindow window(sf::VideoMode({WINDOW_WIDTH, WINDOW_HEIGHT}), "Clock");
 
-    // Load font
+    //------------------------------------------------------------------------------
+    // load font
+    //------------------------------------------------------------------------------
     sf::Font font;
     if (!font.openFromFile(FONT_PATH))
     {
@@ -172,7 +174,9 @@ int main()
         return -1;
     }
 
-    // Load sound
+    //------------------------------------------------------------------------------
+    // load sound
+    //------------------------------------------------------------------------------
     sf::SoundBuffer tickBuffer;
     if (!tickBuffer.loadFromFile(SOUND_PATH))
     {
@@ -181,36 +185,71 @@ int main()
     }
     sf::Sound tickSound(tickBuffer);
 
+    //------------------------------------------------------------------------------
+    // For precise timing control
+    //------------------------------------------------------------------------------
+    sf::Clock loopClock;            // For measuring elapsed time
+    float timeAccumulator = 0.0f;   // For accumulating elapsed time
+    const float targetDelay = 1.0f; // 1 second delay
+
     while (window.isOpen())
     {
-        // Event handling
+        //------------------------------------------------------------------------------
+        // Measure elapsed time and Accumulate elapsed time until it reaches target delay
+        //------------------------------------------------------------------------------
+        float elapsedTime = loopClock.restart().asSeconds();
+        timeAccumulator += elapsedTime;
+
+        //------------------------------------------------------------------------------
+        // handle window close event
+        //------------------------------------------------------------------------------
         while (const auto event = window.pollEvent())
         {
             if (event->is<sf::Event::Closed>())
                 window.close();
         }
 
-        window.clear();
-        tickSound.stop();
+        //------------------------------------------------------------------------------
+        // update clock if accumulator exceeds target delay
+        //------------------------------------------------------------------------------
+        if (timeAccumulator >= targetDelay)
+        {
+            //------------------------------------------------------------------------------
+            // decrease time accumulator by target delay
+            //------------------------------------------------------------------------------
+            timeAccumulator -= targetDelay;
 
-        // Get current time
-        time_t now = time(0);
-        tm *ltm = localtime(&now);
-        int hour = ltm->tm_hour;
-        int minute = ltm->tm_min;
-        int second = ltm->tm_sec;
+            //------------------------------------------------------------------------------
+            // Get current time
+            //------------------------------------------------------------------------------
+            time_t now = time(0);
+            tm *ltm = localtime(&now);
+            int hour = ltm->tm_hour;
+            int minute = ltm->tm_min;
+            int second = ltm->tm_sec;
 
-        // Stop any previous sound before playing a new
-        tickSound.play();
+            //------------------------------------------------------------------------------
+            // stop prev sound and play new sound
+            //------------------------------------------------------------------------------
+            tickSound.stop();
+            tickSound.play();
 
-        // Draw clock components
-        drawClockFace(window);
-        drawClockNumbers(window, font);
-        drawClockHands(window, hour, minute, second);
-        drawTimeText(window, hour, minute, second, font);
+            //------------------------------------------------------------------------------
+            // Clear and redraw
+            //------------------------------------------------------------------------------
+            window.clear();
+            drawClockFace(window);
+            drawClockNumbers(window, font);
+            drawClockHands(window, hour, minute, second);
+            drawTimeText(window, hour, minute, second, font);
+            window.display();
+        }
 
-        window.display();
-        sf::sleep(sf::seconds(1));
+        //------------------------------------------------------------------------------
+        // Avoid 100% CPU usage
+        //------------------------------------------------------------------------------
+
+        sf::sleep(sf::milliseconds(10));
     }
 
     return 0;
