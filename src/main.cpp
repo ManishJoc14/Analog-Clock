@@ -10,18 +10,15 @@
 //------------------------------------------------------------------------------
 void drawLine(sf::RenderWindow &window, float x1, float y1, float x2, float y2, float thickness, sf::Color color)
 {
-    // Calculate the direction vector and its length.
     sf::Vector2f point1(x1, y1);
     sf::Vector2f point2(x2, y2);
     sf::Vector2f direction = point2 - point1;
     float length = std::sqrt(direction.x * direction.x + direction.y * direction.y);
 
-    // Create a rectangle to represent the line.
     sf::RectangleShape line(sf::Vector2f(length, thickness));
     line.setPosition(point1);
     line.setFillColor(color);
 
-    // Compute the angle (in degrees) and set the rotation.
     float angle = std::atan2(direction.y, direction.x) * 180 / M_PI;
     line.setRotation(sf::degrees(angle));
 
@@ -42,9 +39,9 @@ void drawClockFace(sf::RenderWindow &window, int centerX, int centerY, int radiu
     window.draw(outerCircle);
 
     // Small center circle.
-    sf::CircleShape centerCircle(5);
+    sf::CircleShape centerCircle(10);
     centerCircle.setFillColor(sf::Color::White);
-    centerCircle.setPosition(sf::Vector2f(centerX - 5, centerY - 5));
+    centerCircle.setPosition(sf::Vector2f(centerX - 10, centerY - 10));
     window.draw(centerCircle);
 }
 
@@ -55,7 +52,6 @@ void drawClockNumbers(sf::RenderWindow &window, int centerX, int centerY, int ra
 {
     for (int i = 1; i <= 12; i++)
     {
-        // Calculate the position for each number.
         int x = centerX + (radius - 25) * sin(i * M_PI / 6);
         int y = centerY - (radius - 25) * cos(i * M_PI / 6);
 
@@ -65,7 +61,6 @@ void drawClockNumbers(sf::RenderWindow &window, int centerX, int centerY, int ra
         text.setFillColor(sf::Color::White);
         text.setStyle(sf::Text::Bold);
 
-        // Center the text by adjusting its origin based on its local bounds.
         sf::FloatRect textRect = text.getLocalBounds();
         text.setOrigin({textRect.position.x + textRect.size.x / 2.0f,
                         textRect.position.y + textRect.size.y / 2.0f});
@@ -73,6 +68,33 @@ void drawClockNumbers(sf::RenderWindow &window, int centerX, int centerY, int ra
 
         window.draw(text);
     }
+}
+
+//------------------------------------------------------------------------------
+// Draws a realistic clock hand with varying width.
+//------------------------------------------------------------------------------
+void drawRealisticHand(sf::RenderWindow &window, int centerX, int centerY, float angle, float length, float baseWidth, float tipWidth, sf::Color color)
+{
+    sf::ConvexShape hand;
+    hand.setPointCount(4);
+
+    // Calculate the positions of the hand's vertices.
+    float x1 = centerX - baseWidth / 2 * cos(angle);
+    float y1 = centerY - baseWidth / 2 * sin(angle);
+    float x2 = centerX + baseWidth / 2 * cos(angle);
+    float y2 = centerY + baseWidth / 2 * sin(angle);
+    float x3 = centerX + length * sin(angle) + tipWidth / 2 * cos(angle);
+    float y3 = centerY - length * cos(angle) + tipWidth / 2 * sin(angle);
+    float x4 = centerX + length * sin(angle) - tipWidth / 2 * cos(angle);
+    float y4 = centerY - length * cos(angle) - tipWidth / 2 * sin(angle);
+
+    hand.setPoint(0, sf::Vector2f(x1, y1));
+    hand.setPoint(1, sf::Vector2f(x2, y2));
+    hand.setPoint(2, sf::Vector2f(x3, y3));
+    hand.setPoint(3, sf::Vector2f(x4, y4));
+
+    hand.setFillColor(color);
+    window.draw(hand);
 }
 
 //------------------------------------------------------------------------------
@@ -85,23 +107,14 @@ void drawClockHands(sf::RenderWindow &window, int centerX, int centerY, int radi
     double m_rad = minute * (M_PI / 30) + (second * M_PI / 1800);
     double s_rad = second * (M_PI / 30);
 
-    // Determine the lengths for the hour, minute, and second hands.
-    int h_length = radius * 0.5;
-    int m_length = radius * 0.7;
-    int s_length = radius * 0.9;
+    // Draw the hour hand (widest at base, narrower at tip).
+    drawRealisticHand(window, centerX, centerY, h_rad, radius * 0.5, 16, 3, sf::Color::Red);
 
-    // Calculate end points for each hand.
-    int h_x2 = centerX + h_length * sin(h_rad);
-    int h_y2 = centerY - h_length * cos(h_rad);
-    int m_x2 = centerX + m_length * sin(m_rad);
-    int m_y2 = centerY - m_length * cos(m_rad);
-    int s_x2 = centerX + s_length * sin(s_rad);
-    int s_y2 = centerY - s_length * cos(s_rad);
+    // Draw the minute hand (medium width).
+    drawRealisticHand(window, centerX, centerY, m_rad, radius * 0.65, 12, 2, sf::Color::Green);
 
-    // Draw the hands with different thicknesses and colors.
-    drawLine(window, centerX, centerY, h_x2, h_y2, 3, sf::Color::Red);
-    drawLine(window, centerX, centerY, m_x2, m_y2, 2, sf::Color::Green);
-    drawLine(window, centerX, centerY, s_x2, s_y2, 1, sf::Color::White);
+    // Draw the second hand (thinnest).
+    drawRealisticHand(window, centerX, centerY, s_rad, radius * 0.9, 8, 1, sf::Color::White);
 }
 
 //------------------------------------------------------------------------------
@@ -110,7 +123,6 @@ void drawClockHands(sf::RenderWindow &window, int centerX, int centerY, int radi
 void drawTimeText(sf::RenderWindow &window, int hour, int minute, int second, const sf::Font &font)
 {
     std::ostringstream timeStr;
-    // Format the time with leading zeros (e.g., "09:05:03").
     timeStr << std::setw(2) << std::setfill('0') << hour << ":"
             << std::setw(2) << std::setfill('0') << minute << ":"
             << std::setw(2) << std::setfill('0') << second;
@@ -120,7 +132,7 @@ void drawTimeText(sf::RenderWindow &window, int hour, int minute, int second, co
     timeText.setCharacterSize(24);
     timeText.setFillColor(sf::Color::White);
     timeText.setStyle(sf::Text::Bold);
-    timeText.setPosition({200, 0});
+    timeText.setPosition({350, 0});
 
     window.draw(timeText);
 }
@@ -130,14 +142,11 @@ void drawTimeText(sf::RenderWindow &window, int hour, int minute, int second, co
 //------------------------------------------------------------------------------
 int main()
 {
-    // Create an SFML window.
-    sf::RenderWindow window(sf::VideoMode({500, 500}), "Clock");
+    sf::RenderWindow window(sf::VideoMode({800, 800}), "Clock");
 
-    // Define clock parameters.
-    int radius = 180;
-    int centerX = 250, centerY = 250;
+    int radius = 250;
+    int centerX = 400, centerY = 400;
 
-    // Load the font.
     sf::Font font;
     if (!font.openFromFile("Montserrat-Regular.ttf"))
     {
@@ -145,36 +154,29 @@ int main()
         return -1;
     }
 
-    // Main loop.
     while (window.isOpen())
     {
-        // Process events.
         while (const auto event = window.pollEvent())
         {
             if (event->is<sf::Event::Closed>())
                 window.close();
         }
 
-        // Clear the window.
         window.clear();
 
-        // Get the current time.
         time_t now = time(0);
         tm *ltm = localtime(&now);
         int hour = ltm->tm_hour;
         int minute = ltm->tm_min;
         int second = ltm->tm_sec;
 
-        // Draw the clock face, numbers, hands, and digital time.
         drawClockFace(window, centerX, centerY, radius);
         drawClockNumbers(window, centerX, centerY, radius, font);
         drawClockHands(window, centerX, centerY, radius, hour, minute, second);
         drawTimeText(window, hour, minute, second, font);
 
-        // Display the updated frame.
         window.display();
 
-        // Pause for 1 second.
         sf::sleep(sf::seconds(1));
     }
 
