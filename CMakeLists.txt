@@ -21,4 +21,4 @@ add_executable(main src/main.cpp)
 target_compile_features(main PRIVATE cxx_std_17)
 
 # Link against SFML and OpenGL
-target_link_libraries(main PRIVATE SFML::Graphics SFML::Window OpenGL::GL)
+target_link_libraries(main PRIVATE SFML::Graphics SFML::Window SFML::Audio OpenGL::GL)
