@@ -9,7 +9,6 @@
         "-g",
         "${file}",
         "-o",
-        //  "${fileDirname}\\${fileBasenameNoExtension}.exe",
         "${workspaceFolder}\\build\\${fileBasenameNoExtension}.exe",
         "-lbgi",
         "-lgdi32",
@@ -21,12 +20,36 @@
       "options": {
         "cwd": "${workspaceFolder}"
       },
-      "problemMatcher": ["$gcc"],
+      "problemMatcher": [
+        "$gcc"
+      ],
       "group": {
         "kind": "build",
         "isDefault": true
       },
       "detail": "compiler: C:\\MinGW\\bin\\g++.exe"
+    },
+    {
+      "type": "cmake",
+      "label": "CMake: clean rebuild",
+      "command": "cleanRebuild",
+      "targets": [
+        "all"
+      ],
+      "group": "build",
+      "problemMatcher": [],
+      "detail": "CMake template clean rebuild task"
+    },
+    {
+      "type": "cmake",
+      "label": "CMake: clean rebuild",
+      "command": "cleanRebuild",
+      "targets": [
+        "all"
+      ],
+      "group": "build",
+      "problemMatcher": [],
+      "detail": "CMake template clean rebuild task"
     }
   ]
 }
