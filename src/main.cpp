@@ -6,24 +6,69 @@
 #include <sstream>
 #include <iomanip>
 
-#define FONT_PATH "assets/Montserrat-Regular.ttf"
 #define FONT_SIZE 30
-#define FONT_COLOR sf::Color::White
+#define OUTLINE_THICKNESS 1
 #define FONT_STYLE sf::Text::Bold
+#define FONT_COLOR sf::Color::White
+#define OUTLINE_COLOR sf::Color(255, 255, 255, 50)
+#define OUTER_CIRCLE_FILL_COLOR sf::Color::Transparent
+#define CENTER_CIRCLE_FILL_COLOR sf::Color::White
 
-#define CLOCK_FACE_PATH "assets/clock_face.png"
-#define HOUR_HAND_PATH "assets/hour_hand.png"
-#define MINUTE_HAND_PATH "assets/minute_hand.png"
-#define SECOND_HAND_PATH "assets/second_hand.png"
+// fonts
+#define FONT_PATH "assets/fonts/Montserrat-Regular.ttf"
 
-#define SOUND_PATH "assets/tick_sound.wav"
+// shaders
+#define VERTEXT_SHADER_PATH "assets/shaders/vertex_shader.glsl"
+#define FRAGMENT_SHADER_PATH "assets/shaders/fragment_shader.glsl"
+
+// images
+#define CLOCK_FACE_PATH "assets/images/clock_face.png"
+#define HOUR_HAND_PATH "assets/images/hour_hand.png"
+#define MINUTE_HAND_PATH "assets/images/minute_hand.png"
+#define SECOND_HAND_PATH "assets/images/second_hand.png"
+#define BACKGROUND_IMAGE_PATH "assets/images/background_image.png"
+
+// sounds
+#define SOUND_PATH "assets/sounds/tick_sound.wav"
 
 #define WINDOW_WIDTH 800
 #define WINDOW_HEIGHT 800
 
 #define CLOCK_RADIUS 250
+#define CENTER_CIRCLE_RADIUS 10
 #define CENTER_X 400
 #define CENTER_Y 400
+
+#define BLUR_RADIUS 0.06f
+
+// ------------------------------------------------------------------------------
+// SFML (Simple and Fast Multimedia Library)
+// ------------------------------------------------------------------------------
+
+//------------------------------------------------------------------------------
+// Update the view to maintain aspect ratio when the window is resized.
+//------------------------------------------------------------------------------
+void updateView(sf::RenderWindow &window)
+{
+    sf::Vector2u windowSize = window.getSize();
+    float aspectRatio = static_cast<float>(windowSize.x) / windowSize.y;
+
+    // create a square view at (0,0) with size (WINDOW_WIDTH, WINDOW_HEIGHT)
+    sf::View view(sf::FloatRect({0, 0}, {WINDOW_WIDTH, WINDOW_HEIGHT}));
+
+    // ie. when width > height
+    if (aspectRatio > 1.0f)
+    {
+        // change width to maintain aspect ratio
+        view.setSize({WINDOW_WIDTH * aspectRatio, WINDOW_HEIGHT});
+    }
+    else
+    {
+        // change height to maintain aspect ratio
+        view.setSize({WINDOW_WIDTH, WINDOW_HEIGHT / aspectRatio});
+    }
+    window.setView(view);
+}
 
 //------------------------------------------------------------------------------
 // Draws a line with a specified thickness and color between two points.
@@ -32,14 +77,14 @@ void drawLine(sf::RenderWindow &window, float x1, float y1, float x2, float y2, 
 {
     sf::Vector2f point1(x1, y1);
     sf::Vector2f point2(x2, y2);
-    sf::Vector2f direction = point2 - point1;
-    float length = std::sqrt(direction.x * direction.x + direction.y * direction.y);
+    sf::Vector2f difference = point2 - point1;
+    float length = std::sqrt(difference.x * difference.x + difference.y * difference.y);
 
     sf::RectangleShape line(sf::Vector2f(length, thickness));
     line.setPosition(point1);
     line.setFillColor(color);
 
-    float angle = std::atan2(direction.y, direction.x) * 180 / M_PI;
+    float angle = std::atan2(difference.y, difference.x) * 180 / M_PI;
     line.setRotation(sf::degrees(angle));
 
     window.draw(line);
@@ -52,16 +97,16 @@ void drawClockFace(sf::RenderWindow &window)
 {
     // Outer circle representing the clock's edge.
     sf::CircleShape outerCircle(CLOCK_RADIUS);
-    outerCircle.setFillColor(sf::Color::Transparent);
-    outerCircle.setOutlineThickness(2);
-    outerCircle.setOutlineColor(sf::Color::White);
+    outerCircle.setFillColor(OUTER_CIRCLE_FILL_COLOR);
+    outerCircle.setOutlineThickness(OUTLINE_THICKNESS);
+    outerCircle.setOutlineColor(OUTLINE_COLOR);
     outerCircle.setPosition(sf::Vector2f(CENTER_X - CLOCK_RADIUS, CENTER_Y - CLOCK_RADIUS));
     window.draw(outerCircle);
 
     // Small center circle.
-    sf::CircleShape centerCircle(10);
-    centerCircle.setFillColor(sf::Color::White);
-    centerCircle.setPosition(sf::Vector2f(CENTER_X - 10, CENTER_Y - 10));
+    sf::CircleShape centerCircle(CENTER_CIRCLE_RADIUS);
+    centerCircle.setFillColor(CENTER_CIRCLE_FILL_COLOR);
+    centerCircle.setPosition(sf::Vector2f(CENTER_X - CENTER_CIRCLE_RADIUS, CENTER_Y - CENTER_CIRCLE_RADIUS));
     window.draw(centerCircle);
 }
 
@@ -70,10 +115,11 @@ void drawClockFace(sf::RenderWindow &window)
 //------------------------------------------------------------------------------
 void drawClockNumbers(sf::RenderWindow &window, const sf::Font &font)
 {
+    int offset = 25;
     for (int i = 1; i <= 12; i++)
     {
-        int x = CENTER_X + (CLOCK_RADIUS - 25) * sin(i * M_PI / 6);
-        int y = CENTER_Y - (CLOCK_RADIUS - 25) * cos(i * M_PI / 6);
+        int x = CENTER_X + (CLOCK_RADIUS - offset) * sin(i * M_PI / 6);
+        int y = CENTER_Y - (CLOCK_RADIUS - offset) * cos(i * M_PI / 6);
 
         sf::Text text(font);
         text.setString(std::to_string(i));
@@ -112,8 +158,8 @@ void drawRealisticHand(sf::RenderWindow &window, float angle, float length, floa
     hand.setPoint(1, sf::Vector2f(x2, y2));
     hand.setPoint(2, sf::Vector2f(x3, y3));
     hand.setPoint(3, sf::Vector2f(x4, y4));
-
     hand.setFillColor(color);
+
     window.draw(hand);
 }
 
@@ -149,12 +195,40 @@ void drawTimeText(sf::RenderWindow &window, int hour, int minute, int second, co
 
     sf::Text timeText(font);
     timeText.setString(timeStr.str());
-    timeText.setCharacterSize(24);
-    timeText.setFillColor(sf::Color::White);
-    timeText.setStyle(sf::Text::Bold);
+    timeText.setCharacterSize(FONT_SIZE);
+    timeText.setFillColor(FONT_COLOR);
+    timeText.setStyle(FONT_STYLE);
     timeText.setPosition({350, 0});
 
     window.draw(timeText);
+}
+
+//------------------------------------------------------------------------------
+// Draws the background with circular blur effect
+//------------------------------------------------------------------------------
+void drawBackground(sf::RenderWindow &window, sf::Sprite &backgroundSprite, sf::Shader &shader)
+{
+    // Create render texture for blurred version (create once)
+    sf::RenderTexture blurTexture({window.getSize().x, window.getSize().y});
+
+    // 1. Draw fully blurred background
+    blurTexture.clear();
+    shader.setUniform("blur_radius", BLUR_RADIUS); // Use your blur strength
+    blurTexture.draw(backgroundSprite, &shader);
+    blurTexture.display();
+
+    // 2. Create circular mask for blurred area
+    sf::CircleShape blurCircle(CLOCK_RADIUS);
+    blurCircle.setTexture(&blurTexture.getTexture()); // Use blurred texture
+    blurCircle.setTextureRect(sf::IntRect({CENTER_X - CLOCK_RADIUS,
+                                           CENTER_Y - CLOCK_RADIUS},
+                                          {CLOCK_RADIUS * 2,
+                                           CLOCK_RADIUS * 2}));
+    blurCircle.setPosition({CENTER_X - CLOCK_RADIUS, CENTER_Y - CLOCK_RADIUS});
+
+    // 3. Draw final composite
+    window.draw(backgroundSprite); // Original sharp background
+    window.draw(blurCircle);       // Blurred circular area
 }
 
 //------------------------------------------------------------------------------
@@ -162,6 +236,8 @@ void drawTimeText(sf::RenderWindow &window, int hour, int minute, int second, co
 //------------------------------------------------------------------------------
 int main()
 {
+    sf::ContextSettings settings;
+    settings.antiAliasingLevel = 8; // To get anti - aliased shapes(i.e.shapes with smoothed edges)
     sf::RenderWindow window(sf::VideoMode({WINDOW_WIDTH, WINDOW_HEIGHT}), "Clock");
 
     //------------------------------------------------------------------------------
@@ -186,6 +262,34 @@ int main()
     sf::Sound tickSound(tickBuffer);
 
     //------------------------------------------------------------------------------
+    // load background image
+    //------------------------------------------------------------------------------sf::Texture backgroundTexture;
+    sf::Texture backgroundTexture;
+    if (!backgroundTexture.loadFromFile(BACKGROUND_IMAGE_PATH))
+    {
+        std::cerr << "Failed to load background image!" << std::endl;
+        return -1;
+    }
+    auto [width, height] = backgroundTexture.getSize();
+    sf::Sprite backgroundSprite(backgroundTexture);
+
+    // Set the scale of the background image to match the window size
+    backgroundSprite.setScale(
+        {static_cast<float>(window.getSize().x) / width,
+         static_cast<float>(window.getSize().y) / height});
+
+    //------------------------------------------------------------------------------
+    // load shaders
+    //------------------------------------------------------------------------------
+    sf::Shader shader;
+    if (!shader.loadFromFile(VERTEXT_SHADER_PATH, sf::Shader::Type::Vertex) ||
+        !shader.loadFromFile(FRAGMENT_SHADER_PATH, sf::Shader::Type::Fragment))
+    {
+        std::cerr << "Failed to load shaders!" << std::endl;
+        return -1;
+    }
+
+    //------------------------------------------------------------------------------
     // For precise timing control
     //------------------------------------------------------------------------------
     sf::Clock loopClock;            // For measuring elapsed time
@@ -207,6 +311,9 @@ int main()
         {
             if (event->is<sf::Event::Closed>())
                 window.close();
+
+            if (event->is<sf::Event::Resized>())
+                updateView(window);
         }
 
         //------------------------------------------------------------------------------
@@ -238,6 +345,7 @@ int main()
             // Clear and redraw
             //------------------------------------------------------------------------------
             window.clear();
+            drawBackground(window, backgroundSprite, shader);
             drawClockFace(window);
             drawClockNumbers(window, font);
             drawClockHands(window, hour, minute, second);
